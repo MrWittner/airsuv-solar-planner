@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIRSUV — Solar Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&family=Barlow:wght@300;400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0a0c0f;
+  --bg2:      #0f1218;
+  --panel:    #13171e;
+  --border:   #1e2530;
+  --border2:  #2a3340;
+  --accent:   #f59e0b;
+  --accent2:  #ef4444;
+  --gold:     #fbbf24;
+  --blue-hr:  #3b82f6;
+  --twilight: #8b5cf6;
+  --text:     #e2e8f0;
+  --dim:      #64748b;
+  --mid:      #94a3b8;
+  --green:    #22c55e;
+  --fm: 'Share Tech Mono', monospace;
+  --fh: 'Barlow Condensed', sans-serif;
+  --fb: 'Barlow', sans-serif;
+}
+
+html, body { width:100%; min-height:100vh; background:var(--bg); color:var(--text); font-family:var(--fb); font-size:clamp(13px,1.4vw,15px); overflow-x:hidden; }
+
+/* SHELL */
+.shell { display:grid; width:100%; min-height:100vh; grid-template-rows:auto 1fr auto; }
+
+/* HEADER */
+header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 3%; height:clamp(48px,6vh,64px);
+  background:var(--bg2); border-bottom:1px solid var(--border);
+  position:sticky; top:0; z-index:100;
+}
+.logo { font-family:var(--fh); font-weight:700; font-size:clamp(14px,1.6vw,18px); letter-spacing:.2em; color:var(--accent); text-transform:uppercase; }
+.logo span { color:var(--dim); font-weight:300; font-size:.8em; margin-left:.6em; letter-spacing:.08em; }
+.hdr-right { display:flex; align-items:center; gap:1em; }
+.status-dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 6px var(--green); animation:blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.status-label { font-family:var(--fm); font-size:.72em; color:var(--dim); letter-spacing:.08em; }
+#hdrMode { font-family:var(--fm); font-size:.68em; color:var(--accent); letter-spacing:.12em; padding:3px 8px; border:1px solid var(--accent); opacity:.7; }
+
+/* MAIN GRID */
+main {
+  display:grid;
+  grid-template-columns:26% 1fr 28%;
+  min-height:calc(100vh - clamp(48px,6vh,64px) - clamp(32px,4vh,40px));
+}
+@media(max-width:900px){ main{ grid-template-columns:1fr; } }
+
+/* PANELS */
+.panel { background:var(--panel); border-right:1px solid var(--border); padding:4% 5%; overflow-y:auto; }
+.ai-brief { background:var(--panel); border-left:1px solid var(--border); padding:4% 5%; overflow-y:auto; }
+.centre { background:var(--bg); border-right:1px solid var(--border); padding:2% 2%; display:flex; flex-direction:column; gap:0; }
+@media(max-width:900px){
+  .panel,.ai-brief,.centre { border:none; border-bottom:1px solid var(--border); }
+}
+
+.panel-title { font-family:var(--fh); font-weight:600; font-size:clamp(10px,1.1vw,13px); letter-spacing:.25em; text-transform:uppercase; color:var(--accent); margin-bottom:5%; padding-bottom:3%; border-bottom:1px solid var(--border); }
+
+/* FIELDS */
+.field { margin-bottom:5%; }
+.field label { display:block; font-family:var(--fm); font-size:.72em; color:var(--dim); letter-spacing:.12em; text-transform:uppercase; margin-bottom:2%; }
+.field input, .field select {
+  width:100%; background:var(--bg); border:1px solid var(--border2);
+  color:var(--text); font-family:var(--fm); font-size:.9em;
+  padding:8px 10px; outline:none; transition:border-color .2s;
+  appearance:none; -webkit-appearance:none;
+}
+.field input:focus, .field select:focus { border-color:var(--accent); }
+.field input::placeholder { color:var(--dim); }
+.coord-row { display:grid; grid-template-columns:1fr 1fr; gap:6%; }
+.select-wrap { position:relative; }
+.select-wrap select { width:100%; padding-right:28px; cursor:pointer; }
+.select-wrap::after { content:''; pointer-events:none; position:absolute; right:10px; top:50%; transform:translateY(-50%); width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid var(--dim); transition:border-top-color .2s; }
+.select-wrap:focus-within::after { border-top-color:var(--accent); }
+.select-wrap select option { background:#1a1f28; color:var(--text); }
+
+/* BUTTONS */
+.btn { width:100%; padding:10px; background:var(--accent); color:#000; border:none; font-family:var(--fh); font-weight:700; font-size:clamp(12px,1.2vw,14px); letter-spacing:.2em; text-transform:uppercase; cursor:pointer; transition:background .2s,transform .1s; }
+.btn:hover { background:var(--gold); }
+.btn:active { transform:scale(.98); }
+.btn-gps { background:var(--bg); color:var(--accent); border:1px solid var(--accent); display:flex; align-items:center; justify-content:center; gap:.5em; transition:all .2s; }
+.btn-gps:hover { background:var(--accent); color:#000; }
+.btn-gps:disabled { opacity:.4; cursor:not-allowed; }
+.btn-gps.acquiring { border-color:var(--blue-hr); color:var(--blue-hr); animation:gpsPulse 1.2s infinite; }
+.btn-gps.success   { border-color:var(--green); color:var(--green); }
+.btn-gps.error     { border-color:var(--accent2); color:var(--accent2); }
+@keyframes gpsPulse { 0%,100%{box-shadow:0 0 0 0 rgba(59,130,246,0)} 50%{box-shadow:0 0 0 3px rgba(59,130,246,.2)} }
+
+/* LOCATION STATUS */
+.loc-status { display:flex; align-items:center; gap:.5em; margin-top:3%; padding:6px 8px; background:var(--bg); border:1px solid var(--border); min-height:30px; }
+.loc-dot { width:6px; height:6px; border-radius:50%; background:var(--dim); flex-shrink:0; transition:background .3s; }
+.loc-dot.acquiring { background:var(--blue-hr); animation:blink 1s infinite; }
+.loc-dot.success   { background:var(--green); }
+.loc-dot.error     { background:var(--accent2); }
+#locMsg { font-family:var(--fm); font-size:.68em; color:var(--dim); letter-spacing:.06em; }
+
+/* ACCURACY BADGE */
+.acc-badge { display:flex; align-items:center; justify-content:space-between; margin-top:2%; padding:5px 8px; background:rgba(34,197,94,.06); border:1px solid rgba(34,197,94,.2); }
+#accLabel { font-family:var(--fm); font-size:.68em; color:var(--green); letter-spacing:.08em; }
+.acc-clear { background:none; border:none; font-family:var(--fm); font-size:.65em; color:var(--dim); cursor:pointer; padding:2px 4px; transition:color .2s; }
+.acc-clear:hover { color:var(--accent2); }
+
+/* MANUAL BLOCK */
+.manual-label { font-family:var(--fm); font-size:.65em; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:4% 0 3%; padding:4px 0; border-top:1px dashed var(--border2); border-bottom:1px dashed var(--border2); }
+input[readonly] { opacity:.7; cursor:default; }
+input[readonly]:focus { border-color:var(--border) !important; }
+
+/* LIGHT BADGES */
+.light-modes { display:grid; grid-template-columns:1fr 1fr; gap:4%; margin-top:4%; }
+.light-badge { padding:8px 6px; border:1px solid var(--border2); text-align:center; cursor:default; }
+.badge-dot { width:8px; height:8px; border-radius:50%; margin:0 auto 4px; }
+.badge-label { font-family:var(--fm); font-size:.65em; letter-spacing:.1em; color:var(--dim); text-transform:uppercase; }
+.badge-time { font-family:var(--fm); font-size:.72em; color:var(--text); margin-top:2px; }
+.lm-golden { color:var(--gold); } .lm-golden .badge-dot { background:var(--gold); }
+.lm-blue   { color:var(--blue-hr); } .lm-blue .badge-dot { background:var(--blue-hr); }
+.lm-twilight{ color:var(--twilight); } .lm-twilight .badge-dot { background:var(--twilight); }
+.lm-avoid  { color:var(--accent2); } .lm-avoid .badge-dot { background:var(--accent2); }
+
+/* CENTRE PANEL */
+.arc-header { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:2%; }
+.arc-title { font-family:var(--fh); font-size:clamp(16px,2.2vw,26px); font-weight:300; letter-spacing:.06em; }
+.arc-title strong { font-weight:700; color:var(--accent); }
+.arc-coords { font-family:var(--fm); font-size:.72em; color:var(--dim); text-align:right; line-height:1.6; }
+@media(max-width:600px){ .arc-header{ flex-direction:column; align-items:flex-start; gap:6px; } }
+
+.arc-container { width:100%; background:var(--bg2); border:1px solid var(--border); flex:1; min-height:200px; position:relative; }
+.arc-svg { width:100%; height:100%; display:block; }
+
+.time-ruler { display:flex; justify-content:space-between; padding:1% 2%; background:var(--bg2); border:1px solid var(--border); border-top:none; }
+.time-marker { font-family:var(--fm); font-size:.62em; color:var(--dim); }
+.time-marker.now { color:var(--accent); font-weight:bold; }
+
+.elev-bar-wrap { margin-top:2%; }
+.elev-label { font-family:var(--fm); font-size:.65em; color:var(--dim); letter-spacing:.1em; text-transform:uppercase; margin-bottom:1%; }
+.elev-bar { width:100%; height:26px; background:var(--bg2); border:1px solid var(--border); position:relative; overflow:hidden; display:flex; }
+.es { height:100%; }
+.es-n1  { background:#0a0c14; flex:12; }
+.es-t1  { background:linear-gradient(90deg,#1a1040,#2d1b69); flex:5; }
+.es-b1  { background:linear-gradient(90deg,#1e3a5f,#2563eb40); flex:4; }
+.es-g1  { background:linear-gradient(90deg,#78350f,#d97706); flex:5; }
+.es-day { background:linear-gradient(90deg,#fbbf2440,#f59e0b20); flex:18; }
+.es-g2  { background:linear-gradient(90deg,#d97706,#78350f); flex:5; }
+.es-b2  { background:linear-gradient(90deg,#2563eb40,#1e3a5f); flex:4; }
+.es-t2  { background:linear-gradient(90deg,#2d1b69,#1a1040); flex:5; }
+.es-n2  { background:#0a0c14; flex:10; }
+.now-ind { position:absolute; top:0; bottom:0; width:2px; background:var(--accent); box-shadow:0 0 8px var(--accent); left:50%; z-index:10; pointer-events:none; transition:left .5s; }
+
+.metrics-row { display:grid; grid-template-columns:repeat(4,1fr); gap:2%; margin-top:2%; }
+@media(max-width:600px){ .metrics-row{ grid-template-columns:1fr 1fr; } }
+.metric-card { background:var(--panel); border:1px solid var(--border); padding:4% 5%; }
+.metric-label { font-family:var(--fm); font-size:.62em; color:var(--dim); letter-spacing:.12em; text-transform:uppercase; margin-bottom:4px; }
+.metric-value { font-family:var(--fh); font-size:clamp(15px,2vw,22px); font-weight:600; }
+.metric-unit  { font-family:var(--fm); font-size:.65em; color:var(--dim); }
+
+/* RIGHT PANEL */
+.shoot-toggle { display:grid; grid-template-columns:1fr 1fr; gap:4%; margin-bottom:5%; }
+.shoot-btn { padding:8px 4px; background:var(--bg); border:1px solid var(--border2); color:var(--dim); font-family:var(--fm); font-size:.7em; letter-spacing:.1em; text-transform:uppercase; text-align:center; cursor:pointer; transition:all .2s; user-select:none; }
+.shoot-btn.active { background:var(--accent); border-color:var(--accent); color:#000; font-weight:bold; }
+
+.brief-section { margin-bottom:5%; padding-bottom:5%; border-bottom:1px solid var(--border); }
+.brief-section:last-of-type { border-bottom:none; }
+.brief-tag { display:inline-block; font-family:var(--fm); font-size:.62em; letter-spacing:.15em; text-transform:uppercase; padding:3px 7px; border:1px solid currentColor; margin-bottom:4%; }
+.tag-optimal  { color:var(--green); }
+.tag-warning  { color:var(--accent); }
+.tag-critical { color:var(--accent2); }
+.tag-info     { color:var(--blue-hr); }
+.brief-heading { font-family:var(--fh); font-weight:600; font-size:clamp(13px,1.4vw,16px); color:var(--text); margin-bottom:3%; letter-spacing:.04em; }
+.brief-body { font-size:.82em; color:var(--mid); line-height:1.65; }
+
+.window-bar { width:100%; height:5px; background:var(--border); margin:4% 0 2%; position:relative; overflow:hidden; }
+.window-fill { position:absolute; height:100%; left:0; transition:width .6s ease; }
+.fill-gold  { background:var(--gold); }
+.fill-blue  { background:var(--blue-hr); }
+.window-stats { display:flex; justify-content:space-between; font-family:var(--fm); font-size:.68em; color:var(--dim); }
+
+/* FLIGHT PATH */
+.flight-block { display:flex; gap:5%; align-items:flex-start; margin-top:3%; }
+.compass-wrap { flex-shrink:0; width:clamp(75px,28%,95px); }
+.compass-svg { width:100%; height:auto; display:block; }
+.flight-data { flex:1; display:flex; flex-direction:column; gap:5px; }
+.flight-row { display:flex; justify-content:space-between; align-items:baseline; gap:4px; }
+.fl { font-family:var(--fm); font-size:.62em; color:var(--dim); letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; }
+.fv { font-family:var(--fm); font-size:.72em; color:var(--text); text-align:right; }
+.flight-note { font-size:.72em; color:var(--dim); line-height:1.5; margin-top:6px; padding-top:6px; border-top:1px solid var(--border); }
+
+/* FILTERS */
+.filter-pills { display:grid; grid-template-columns:1fr 1fr; gap:4%; margin-top:3%; }
+.filter-pill { padding:8px; border:1px solid var(--border2); background:var(--bg); }
+.filter-pill.nd { border-left:3px solid var(--accent); }
+.filter-pill.pl { border-left:3px solid var(--blue-hr); }
+.filter-name { font-family:var(--fh); font-weight:700; font-size:clamp(14px,1.5vw,18px); margin-bottom:4px; }
+.filter-pill.nd .filter-name { color:var(--accent); }
+.filter-pill.pl .filter-name { color:var(--blue-hr); }
+.filter-reason { font-size:.68em; color:var(--dim); line-height:1.5; }
+.filter-rows { margin-top:4%; display:flex; flex-direction:column; gap:0; }
+.filter-row { display:flex; justify-content:space-between; align-items:baseline; gap:6px; padding:4px 0; border-bottom:1px solid var(--border); }
+.filter-row:last-child { border-bottom:none; }
+.fr-l { font-family:var(--fm); font-size:.62em; color:var(--dim); letter-spacing:.08em; white-space:nowrap; flex-shrink:0; }
+.fr-v { font-family:var(--fm); font-size:.65em; color:var(--mid); text-align:right; }
+.fr-warn { color:var(--accent); }
+
+/* EXPORT */
+.export-row { display:grid; grid-template-columns:1fr 1fr; gap:4%; margin-top:4%; }
+.export-btn { padding:9px 4px; background:transparent; border:1px solid var(--border2); color:var(--mid); font-family:var(--fm); font-size:.68em; letter-spacing:.08em; text-transform:uppercase; text-align:center; cursor:pointer; transition:all .2s; }
+.export-btn:hover { border-color:var(--accent); color:var(--accent); }
+@media(max-width:600px){ .export-row{ grid-template-columns:1fr; } }
+
+/* FOOTER */
+footer { display:flex; align-items:center; justify-content:space-between; padding:0 3%; height:clamp(32px,4vh,40px); background:var(--bg2); border-top:1px solid var(--border); }
+.footer-l, .footer-r { font-family:var(--fm); font-size:clamp(9px,.9vw,11px); color:var(--dim); letter-spacing:.08em; }
+.footer-r { color:var(--border2); }
+
+/* SCANLINES */
+.scanlines { pointer-events:none; position:fixed; inset:0; z-index:9999; background:repeating-linear-gradient(to bottom,transparent 0px,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px); opacity:.5; }
+</style>
+</head>
+<body>
+<div class="scanlines"></div>
+<div class="shell">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">AIRSUV <span>// Solar Planner</span></div>
+  <div class="hdr-right">
+    <span id="hdrMode">INSPECTION</span>
+    <div class="status-dot"></div>
+    <span class="status-label" id="hdrStatus">READY</span>
+  </div>
+</header>
+
+<main>
+
+<!-- ── LEFT PANEL ── -->
+<div class="panel">
+  <div class="panel-title">Mission Parameters</div>
+
+  <button class="btn btn-gps" id="btnGPS" onclick="requestGPS()">⌖ Use Current Location</button>
+
+  <div class="loc-status">
+    <div class="loc-dot" id="locDot"></div>
+    <span id="locMsg">Awaiting location...</span>
+  </div>
+
+  <div class="field coord-row" style="margin-top:4%">
+    <div>
+      <label>Latitude</label>
+      <input type="text" id="inputLat" placeholder="—" readonly>
+    </div>
+    <div>
+      <label>Longitude</label>
+      <input type="text" id="inputLon" placeholder="—" readonly>
+    </div>
+  </div>
+
+  <div class="acc-badge" id="accBadge" style="display:none">
+    <span id="accLabel">GPS · ±0m</span>
+    <button class="acc-clear" onclick="clearLocation()">✕ Manual Override</button>
+  </div>
+
+  <div id="manualBlock" style="display:none">
+    <div class="manual-label">Manual Location Entry</div>
+    <div class="field">
+      <label>Location Name</label>
+      <input type="text" id="inputName" placeholder="e.g. Humber Bridge, Hull">
+    </div>
+    <div class="field coord-row">
+      <div>
+        <label>Latitude</label>
+        <input type="text" id="manLat" placeholder="53.7230" oninput="syncManual()">
+      </div>
+      <div>
+        <label>Longitude</label>
+        <input type="text" id="manLon" placeholder="-0.4310" oninput="syncManual()">
+      </div>
+    </div>
+  </div>
+
+  <div class="field" style="margin-top:4%">
+    <label>Mission Date</label>
+    <input type="date" id="inputDate">
+  </div>
+
+  <div class="field">
+    <label>Shoot Type</label>
+    <div class="select-wrap">
+      <select id="shootType" onchange="if(document.getElementById('inputLat').value) calculate()">
+        <option>Infrastructure Inspection</option>
+        <option>Heritage Building</option>
+        <option>Solar Farm Inspection</option>
+        <option>Telecoms / Cell Tower</option>
+        <option>Cinematic / B-Roll</option>
+        <option>Documentary</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Asset Orientation</label>
+    <div class="select-wrap">
+      <select id="assetOrientation">
+        <option>Unknown</option>
+        <option>North-facing</option>
+        <option>South-facing</option>
+        <option>East-facing</option>
+        <option>West-facing</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="btn" id="calcBtn" style="margin-top:4%">Calculate Solar Plan</button>
+
+  <!-- Light window badges -->
+  <div style="margin-top:6%; border-top:1px solid var(--border); padding-top:5%">
+    <div class="panel-title" style="margin-bottom:4%">Light Windows</div>
+    <div class="light-modes">
+      <div class="light-badge lm-golden">
+        <div class="badge-dot"></div>
+        <div class="badge-label">Golden AM</div>
+        <div class="badge-time" id="badgeGoldAm">—</div>
+      </div>
+      <div class="light-badge lm-golden">
+        <div class="badge-dot"></div>
+        <div class="badge-label">Golden PM</div>
+        <div class="badge-time" id="badgeGoldPm">—</div>
+      </div>
+      <div class="light-badge lm-blue">
+        <div class="badge-dot"></div>
+        <div class="badge-label">Blue Hour AM</div>
+        <div class="badge-time" id="badgeBlueAm">—</div>
+      </div>
+      <div class="light-badge lm-avoid">
+        <div class="badge-dot"></div>
+        <div class="badge-label">Avoid</div>
+        <div class="badge-time" id="badgeAvoid">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CENTRE PANEL ── -->
+<div class="centre">
+  <div class="arc-header">
+    <div class="arc-title"><strong id="arcName">—</strong> — Solar Arc</div>
+    <div class="arc-coords" id="arcCoords">—</div>
+  </div>
+
+  <div class="arc-container">
+    <svg class="arc-svg" id="arcSvg" viewBox="0 0 800 280" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="skyG" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style="stop-color:#0a0f1a"/>
+          <stop offset="100%" style="stop-color:#0d1520"/>
+        </linearGradient>
+        <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="sglow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="cglow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <rect width="800" height="280" fill="url(#skyG)"/>
+      <!-- Grid -->
+      <line x1="0" y1="210" x2="800" y2="210" stroke="#1e2530" stroke-width="1"/>
+      <line x1="0" y1="145" x2="800" y2="145" stroke="#1a2030" stroke-width=".5" stroke-dasharray="4,6"/>
+      <line x1="0" y1="80"  x2="800" y2="80"  stroke="#1a2030" stroke-width=".5" stroke-dasharray="4,6"/>
+      <text x="6" y="213" fill="#2a3340" font-family="Share Tech Mono" font-size="9">0°</text>
+      <text x="6" y="148" fill="#2a3340" font-family="Share Tech Mono" font-size="9">35°</text>
+      <text x="6" y="83"  fill="#2a3340" font-family="Share Tech Mono" font-size="9">70°</text>
+      <!-- Sun arc path (updated by JS) -->
+      <path id="arcPath" d="M 200,210 Q 400,60 600,210" fill="none" stroke="#f59e0b" stroke-width="1.5" opacity=".35"/>
+      <path id="arcPathGlow" d="M 200,210 Q 400,60 600,210" fill="none" stroke="#fbbf24" stroke-width=".8" opacity=".7" filter="url(#glow)"/>
+      <!-- SR/SS markers -->
+      <line id="svgSr" x1="200" y1="170" x2="200" y2="210" stroke="#d97706" stroke-width="1.5" opacity=".8"/>
+      <line id="svgSs" x1="600" y1="170" x2="600" y2="210" stroke="#d97706" stroke-width="1.5" opacity=".8"/>
+      <line id="svgGhAmE" x1="240" y1="175" x2="240" y2="210" stroke="#d97706" stroke-width="1" opacity=".4"/>
+      <line id="svgGhPmS" x1="560" y1="175" x2="560" y2="210" stroke="#d97706" stroke-width="1" opacity=".4"/>
+      <text id="svgSrTxt" x="202" y="226" fill="#d97706" font-family="Share Tech Mono" font-size="8">SR —</text>
+      <text id="svgSsTxt" x="562" y="226" fill="#d97706" font-family="Share Tech Mono" font-size="8">SS —</text>
+      <!-- NOW sun -->
+      <circle id="svgSunA" cx="400" cy="100" r="13" fill="#f59e0b" opacity=".12" filter="url(#sglow)"/>
+      <circle id="svgSunB" cx="400" cy="100" r="7"  fill="#fbbf24" opacity=".55" filter="url(#sglow)"/>
+      <circle id="svgSunC" cx="400" cy="100" r="3.5" fill="#fff"  opacity=".9"/>
+      <line id="svgNowL" x1="400" y1="100" x2="400" y2="210" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3,4" opacity=".45"/>
+      <text id="svgNowTxt"  x="388" y="91"  fill="#fff"    font-family="Share Tech Mono" font-size="8">NOW</text>
+      <text id="svgNowTime" x="374" y="242" fill="#f59e0b" font-family="Share Tech Mono" font-size="8">—</text>
+      <!-- Max label -->
+      <text id="svgMaxTxt" x="340" y="26" fill="#64748b" font-family="Share Tech Mono" font-size="8" letter-spacing="1">MAX —</text>
+      <!-- Azimuth line -->
+      <line id="svgAzL" x1="400" y1="210" x2="400" y2="100" stroke="#3b82f6" stroke-width=".8" stroke-dasharray="2,4" opacity=".4"/>
+      <text id="svgAzTxt" x="410" y="165" fill="#3b82f6" font-family="Share Tech Mono" font-size="8" opacity=".7">—° AZ</text>
+      <!-- Compass label -->
+      <text x="340" y="262" fill="#1e2530" font-family="Share Tech Mono" font-size="9" letter-spacing="2">E ←——— 180° ———→ W</text>
+    </svg>
+  </div>
+
+  <!-- Time ruler -->
+  <div class="time-ruler" id="timeRuler">
+    <span class="time-marker">00:00</span>
+    <span class="time-marker">03:00</span>
+    <span class="time-marker">06:00</span>
+    <span class="time-marker">09:00</span>
+    <span class="time-marker">12:00</span>
+    <span class="time-marker" id="rulerNow">—</span>
+    <span class="time-marker">18:00</span>
+    <span class="time-marker">21:00</span>
+    <span class="time-marker">24:00</span>
+  </div>
+
+  <!-- Light quality bar -->
+  <div class="elev-bar-wrap">
+    <div class="elev-label">Light Quality Timeline</div>
+    <div class="elev-bar">
+      <div class="es es-n1"></div>
+      <div class="es es-t1"></div>
+      <div class="es es-b1"></div>
+      <div class="es es-g1"></div>
+      <div class="es es-day"></div>
+      <div class="es es-g2"></div>
+      <div class="es es-b2"></div>
+      <div class="es es-t2"></div>
+      <div class="es es-n2"></div>
+      <div class="now-ind" id="nowInd"></div>
+    </div>
+  </div>
+
+  <!-- Metric cards -->
+  <div class="metrics-row">
+    <div class="metric-card">
+      <div class="metric-label">Elevation</div>
+      <div class="metric-value" id="metElev" style="color:var(--accent)">—<span class="metric-unit">°</span></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Azimuth</div>
+      <div class="metric-value" id="metAz">—<span class="metric-unit">°</span></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Best Window</div>
+      <div class="metric-value" id="metWindow" style="font-size:clamp(11px,1.3vw,15px);color:var(--gold)">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Light Phase</div>
+      <div class="metric-value" id="metPhase" style="font-size:clamp(10px,1.1vw,13px)">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── RIGHT PANEL ── -->
+<div class="ai-brief">
+  <div class="panel-title">AI Shoot Brief</div>
+
+  <div class="shoot-toggle">
+    <div class="shoot-btn active" id="btnInspection" onclick="setMode('inspection')">Inspection</div>
+    <div class="shoot-btn" id="btnCinematic" onclick="setMode('cinematic')">Cinematic</div>
+  </div>
+
+  <!-- Current conditions -->
+  <div class="brief-section">
+    <div class="brief-tag" id="condTag">◈ Conditions</div>
+    <div class="brief-heading" id="condHead">Awaiting calculation</div>
+    <div class="brief-body" id="condBody">Enter location and press Calculate Solar Plan to generate your shoot brief.</div>
+  </div>
+
+  <!-- Flight path -->
+  <div class="brief-section">
+    <div class="brief-tag tag-info">◈ Flight Path</div>
+    <div class="brief-heading">Optimal Approach</div>
+    <div class="flight-block">
+      <div class="compass-wrap">
+        <svg class="compass-svg" viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" fill="none" stroke="#1e2530" stroke-width="1"/>
+          <circle cx="60" cy="60" r="44" fill="none" stroke="#13171e" stroke-width="8"/>
+          <line x1="60" y1="8"   x2="60" y2="18"  stroke="#2a3340" stroke-width="1"/>
+          <line x1="60" y1="102" x2="60" y2="112" stroke="#2a3340" stroke-width="1"/>
+          <line x1="8"  y1="60"  x2="18" y2="60"  stroke="#2a3340" stroke-width="1"/>
+          <line x1="102" y1="60" x2="112" y2="60" stroke="#2a3340" stroke-width="1"/>
+          <text x="57" y="22"  fill="#64748b" font-family="Share Tech Mono" font-size="9">N</text>
+          <text x="57" y="108" fill="#64748b" font-family="Share Tech Mono" font-size="9">S</text>
+          <text x="6"  y="64"  fill="#64748b" font-family="Share Tech Mono" font-size="9">W</text>
+          <text x="107" y="64" fill="#64748b" font-family="Share Tech Mono" font-size="9">E</text>
+          <g id="cSun" transform="rotate(180,60,60)">
+            <line x1="60" y1="60" x2="60" y2="22" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="3,3" opacity=".4"/>
+            <circle cx="60" cy="18" r="4" fill="#f59e0b" opacity=".5" filter="url(#cglow)"/>
+          </g>
+          <g id="cApproach" transform="rotate(0,60,60)">
+            <line x1="60" y1="60" x2="60" y2="22" stroke="#22c55e" stroke-width="2" filter="url(#cglow)"/>
+            <polygon points="60,14 55,24 65,24" fill="#22c55e" filter="url(#cglow)"/>
+          </g>
+          <circle cx="60" cy="60" r="3" fill="#2a3340"/>
+          <text id="cBearingTxt" x="38" y="76" fill="#22c55e" font-family="Share Tech Mono" font-size="7">—</text>
+        </svg>
+      </div>
+      <div class="flight-data">
+        <div class="flight-row"><span class="fl">Approach</span><span class="fv" id="fApproach" style="color:var(--green)">—</span></div>
+        <div class="flight-row"><span class="fl">Sun Bearing</span><span class="fv" id="fSunBearing">—</span></div>
+        <div class="flight-row"><span class="fl">Shadow Cast</span><span class="fv" id="fShadow">—</span></div>
+        <div class="flight-row"><span class="fl">Lit Face</span><span class="fv" id="fLitFace">—</span></div>
+        <div class="flight-note" id="fNote">Calculate to generate flight path.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter recommendation -->
+  <div class="brief-section">
+    <div class="brief-tag tag-warning">⬡ Filter Stack</div>
+    <div class="brief-heading" id="filterHead">Recommended Filters</div>
+    <div class="filter-pills">
+      <div class="filter-pill nd">
+        <div class="filter-name" id="fNdName">—</div>
+        <div class="filter-reason" id="fNdReason">—</div>
+      </div>
+      <div class="filter-pill pl">
+        <div class="filter-name">CPL</div>
+        <div class="filter-reason" id="fCplReason">—</div>
+      </div>
+    </div>
+    <div class="filter-rows">
+      <div class="filter-row"><span class="fr-l">Golden Hour</span><span class="fr-v">ND4 or clear · CPL optional</span></div>
+      <div class="filter-row"><span class="fr-l">Blue Hour</span><span class="fr-v">No ND · Open aperture</span></div>
+      <div class="filter-row"><span class="fr-l" id="filterPhaseLabel">Current</span><span class="fr-v fr-warn" id="filterPhaseVal">—</span></div>
+    </div>
+  </div>
+
+  <!-- AM Golden Hour -->
+  <div class="brief-section">
+    <div class="brief-tag tag-optimal">✓ AM Window</div>
+    <div class="brief-heading" id="amHead">Golden Hour — calculating...</div>
+    <div class="brief-body" id="amBody">—</div>
+    <div class="window-bar"><div class="window-fill fill-gold" id="amBar" style="width:0%"></div></div>
+    <div class="window-stats"><span id="amStart">—</span><span id="amDur">—</span><span id="amEnd">—</span></div>
+  </div>
+
+  <!-- PM Golden Hour -->
+  <div class="brief-section">
+    <div class="brief-tag tag-optimal">✓ PM Window</div>
+    <div class="brief-heading" id="pmHead">Golden Hour — calculating...</div>
+    <div class="brief-body" id="pmBody">—</div>
+    <div class="window-bar"><div class="window-fill fill-gold" id="pmBar" style="width:0%"></div></div>
+    <div class="window-stats"><span id="pmStart">—</span><span id="pmDur">—</span><span id="pmEnd">—</span></div>
+  </div>
+
+  <!-- Blue Hour -->
+  <div class="brief-section">
+    <div class="brief-tag tag-info">◈ Blue Hour AM</div>
+    <div class="brief-heading" id="bhHead">Blue Hour — calculating...</div>
+    <div class="brief-body" id="bhBody">—</div>
+    <div class="window-bar"><div class="window-fill fill-blue" id="bhBar" style="width:0%"></div></div>
+    <div class="window-stats"><span id="bhStart">—</span><span id="bhDur">—</span><span id="bhEnd">—</span></div>
+  </div>
+
+  <div class="export-row">
+    <div class="export-btn" onclick="exportBrief()">Export Brief</div>
+    <div class="export-btn" onclick="addToCalendar()">Add to Calendar</div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  <div class="footer-l">AIRSUV SOLAR PLANNER · v1.0</div>
+  <div class="footer-r" id="footerCalc">Not yet calculated</div>
+</footer>
+
+</div><!-- /shell -->
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// AIRSUV SOLAR PLANNER — FULL ENGINE
+// ══════════════════════════════════════════════════════════════
+
+const D2R = Math.PI / 180;
+const R2D = 180 / Math.PI;
+let currentMode = 'inspection';
+let lastCalc = null; // stores last calculation result
+
+// ── SET TODAY ──────────────────────────────────────────────────
+(function(){
+  const t = new Date();
+  const y = t.getFullYear();
+  const m = String(t.getMonth()+1).padStart(2,'0');
+  const d = String(t.getDate()).padStart(2,'0');
+  document.getElementById('inputDate').value = `${y}-${m}-${d}`;
+})();
+
+// ── MODE TOGGLE ────────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('btnInspection').classList.toggle('active', mode === 'inspection');
+  document.getElementById('btnCinematic').classList.toggle('active', mode === 'cinematic');
+  document.getElementById('hdrMode').textContent = mode.toUpperCase();
+  if (lastCalc) renderBrief(lastCalc);
+}
+
+// ── GPS / LOCATION ─────────────────────────────────────────────
+let gpsActive = false;
+
+function setLocStatus(state, msg) {
+  document.getElementById('locDot').className = 'loc-dot ' + state;
+  document.getElementById('locMsg').textContent = msg;
+  document.getElementById('btnGPS').className = 'btn btn-gps ' + state;
+  document.getElementById('hdrStatus').textContent = state === 'success' ? 'LOCATED' : state === 'acquiring' ? 'LOCATING' : state === 'error' ? 'GPS ERROR' : 'READY';
+}
+
+function fillCoords(lat, lon, acc, source) {
+  document.getElementById('inputLat').value = lat.toFixed(6);
+  document.getElementById('inputLon').value = lon.toFixed(6);
+  document.getElementById('accBadge').style.display = 'flex';
+  document.getElementById('accLabel').textContent = source + ' · ±' + Math.round(acc) + 'm';
+  gpsActive = true;
+}
+
+function clearLocation() {
+  document.getElementById('inputLat').value = '';
+  document.getElementById('inputLon').value = '';
+  document.getElementById('accBadge').style.display = 'none';
+  document.getElementById('manualBlock').style.display = 'block';
+  document.getElementById('inputLat').removeAttribute('readonly');
+  document.getElementById('inputLon').removeAttribute('readonly');
+  setLocStatus('', 'Manual entry mode');
+  document.getElementById('btnGPS').className = 'btn btn-gps';
+  gpsActive = false;
+}
+
+function syncManual() {
+  document.getElementById('inputLat').value = document.getElementById('manLat').value;
+  document.getElementById('inputLon').value = document.getElementById('manLon').value;
+}
+
+async function ipFallback() {
+  setLocStatus('acquiring', 'GPS unavailable — trying network...');
+  try {
+    const r = await fetch('https://ipapi.co/json/');
+    const d = await r.json();
+    if (d.latitude && d.longitude) {
+      fillCoords(parseFloat(d.latitude), parseFloat(d.longitude), 5000, 'Network');
+      setLocStatus('success', 'Network location: ' + (d.city||'') + ', ' + (d.country_name||''));
+      const nf = document.getElementById('inputName');
+      if (nf && !nf.value) nf.value = d.city || '';
+      calculate();
+    } else { throw new Error(); }
+  } catch(e) {
+    setLocStatus('error', 'Location unavailable — enter manually');
+    document.getElementById('manualBlock').style.display = 'block';
+  }
+}
+
+async function reverseGeocode(lat, lon) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`, { headers:{'Accept-Language':'en'} });
+    const d = await r.json();
+    const name = d.address ? (d.address.village||d.address.town||d.address.city||d.address.county||'') : '';
+    if (name) {
+      setLocStatus('success', 'Located · ' + name + ', ' + (d.address.country||''));
+      const nf = document.getElementById('inputName');
+      if (nf && !nf.value) nf.value = name;
+    }
+  } catch(e) {}
+}
+
+function requestGPS() {
+  if (!navigator.geolocation) { ipFallback(); return; }
+  setLocStatus('acquiring', 'Requesting GPS...');
+  document.getElementById('btnGPS').disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    async function(pos) {
+      document.getElementById('btnGPS').disabled = false;
+      fillCoords(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, 'GPS');
+      setLocStatus('success', 'GPS acquired · ±' + Math.round(pos.coords.accuracy) + 'm');
+      await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
+      calculate();
+    },
+    function(err) {
+      document.getElementById('btnGPS').disabled = false;
+      if (err.code === 1) {
+        setLocStatus('error', 'GPS denied — enter manually');
+        document.getElementById('manualBlock').style.display = 'block';
+      } else { ipFallback(); }
+    },
+    { enableHighAccuracy:true, timeout:10000, maximumAge:30000 }
+  );
+}
+
+// ── SOLAR MATHS ────────────────────────────────────────────────
+function julianDay(date) { return date.getTime() / 86400000 + 2440587.5; }
+
+function sunPos(date, lat, lon) {
+  const jd = julianDay(date);
+  const n  = jd - 2451545.0;
+  const L  = (280.460 + 0.9856474 * n) % 360;
+  const g  = (357.528 + 0.9856003 * n) % 360;
+  const lam = L + 1.915 * Math.sin(g*D2R) + 0.020 * Math.sin(2*g*D2R);
+  const eps = 23.439 - 0.0000004 * n;
+  const sinDec = Math.sin(eps*D2R) * Math.sin(lam*D2R);
+  const dec    = Math.asin(sinDec) * R2D;
+  const RA     = Math.atan2(Math.cos(eps*D2R)*Math.sin(lam*D2R), Math.cos(lam*D2R)) * R2D;
+  const jd0    = Math.floor(jd-0.5)+0.5;
+  const T      = (jd0-2451545.0)/36525;
+  const GMST   = 6.697375 + 2400.0513369*T;
+  const UT     = date.getUTCHours() + date.getUTCMinutes()/60 + date.getUTCSeconds()/3600;
+  const LST    = ((GMST + UT*1.00273790935 + lon/15) % 24 + 24) % 24;
+  const HA     = (LST*15 - RA + 360) % 360;
+  const haR    = HA > 180 ? HA-360 : HA;
+  const sinAlt = Math.sin(lat*D2R)*Math.sin(dec*D2R) + Math.cos(lat*D2R)*Math.cos(dec*D2R)*Math.cos(haR*D2R);
+  const alt    = Math.asin(sinAlt) * R2D;
+  const cosAz  = (Math.sin(dec*D2R) - Math.sin(lat*D2R)*sinAlt) / (Math.cos(lat*D2R)*Math.cos(Math.asin(sinAlt)));
+  let az = Math.acos(Math.max(-1,Math.min(1,cosAz))) * R2D;
+  if (haR > 0) az = 360 - az;
+  return { az, alt };
+}
+
+function findCrossing(lat, lon, base, thresh, dir, h0, h1) {
+  const d = new Date(base); d.setHours(h0,0,0,0);
+  const e = new Date(base); e.setHours(h1,0,0,0);
+  let prev = null;
+  while (d <= e) {
+    const p = sunPos(d, lat, lon);
+    if (prev !== null) {
+      if (dir==='rise' && prev < thresh && p.alt >= thresh) return new Date(d);
+      if (dir==='set'  && prev > thresh && p.alt <= thresh) return new Date(d);
+    }
+    prev = p.alt;
+    d.setMinutes(d.getMinutes()+1);
+  }
+  return null;
+}
+
+function card(b) {
+  return ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'][Math.round(((b%360)+360)%360/22.5)%16];
+}
+
+function phase(elev) {
+  if (elev < -18) return { name:'NIGHT',      col:'var(--dim)',   tag:'tag-info' };
+  if (elev < -12) return { name:'ASTRO TWI',  col:'var(--twilight)', tag:'tag-info' };
+  if (elev < -6)  return { name:'NAUTICAL',   col:'#6366f1',      tag:'tag-info' };
+  if (elev < 0)   return { name:'BLUE HOUR',  col:'var(--blue-hr)', tag:'tag-info' };
+  if (elev < 6)   return { name:'GOLDEN HR',  col:'var(--gold)',  tag:'tag-optimal' };
+  if (elev < 15)  return { name:'SOFT LIGHT', col:'#86efac',      tag:'tag-optimal' };
+  if (elev < 30)  return { name:'MODERATE',   col:'var(--mid)',   tag:'tag-warning' };
+  return               { name:'HARSH',        col:'var(--accent2)', tag:'tag-critical' };
+}
+
+function ndFilter(elev) {
+  if (elev < 0)  return { name:'No ND',  reason:'Sun below horizon — open aperture.' };
+  if (elev < 6)  return { name:'ND4',   reason:'2-stop. Low sun — keep shutter ≥1/50s.' };
+  if (elev < 15) return { name:'ND8',   reason:'3-stop. Soft directional light.' };
+  if (elev < 30) return { name:'ND16',  reason:'4-stop. Maintain 180° shutter rule.' };
+  if (elev < 50) return { name:'ND32',  reason:'5-stop. Strong overhead light.' };
+  return              { name:'ND64',  reason:'6-stop. Near-zenith — essential.' };
+}
+
+function cplAdvice(elev, type, mode) {
+  if (elev < 0) return 'Not required below horizon.';
+  if (mode === 'cinematic') {
+    if (elev < 6) return 'Optional — low sun may create pleasing lens refraction.';
+    return 'Recommended — reduces sky glare, enhances colour saturation.';
+  }
+  if (type.includes('Inspection')||type.includes('Solar')||type.includes('Telecoms'))
+    return 'Recommended — reduces metallic panel glare and specular reflections.';
+  if (type.includes('Heritage'))
+    return 'Optional — reduces stonework and wet surface glare.';
+  return elev > 15 ? 'Recommended — reduces surface and sky glare.' : 'Optional at this elevation.';
+}
+
+function litFaceFromAz(az) {
+  if (az >= 315 || az < 45)  return 'N aspect lit';
+  if (az < 135)              return 'E aspect lit';
+  if (az < 225)              return 'S aspect lit';
+  return                            'W aspect lit';
+}
+
+function fmt(date) {
+  if (!date) return '—';
+  return date.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+}
+
+function minDur(a, b) {
+  if (!a||!b) return null;
+  return Math.round((b-a)/60000);
+}
+
+// ── SVG HELPERS ────────────────────────────────────────────────
+function tx(date) { return 20 + ((date.getHours()*60+date.getMinutes())/1440)*760; }
+function ty(elev) { return 210 - Math.max(0,elev)*(195/90); }
+
+function setSvgAttr(id, attrs) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  Object.entries(attrs).forEach(([k,v]) => el.setAttribute(k,v));
+}
+function setSvgText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function updateArc(lat, lon, base, sr, ss, ghAmE, ghPmS) {
+  // Redraw arc path from sr to ss
+  if (sr && ss) {
+    const sx = tx(sr), ex = tx(ss);
+    // Find max elevation point for quadratic bezier control
+    let maxElev = 0, maxX = (sx+ex)/2;
+    for (let h=0; h<24; h++) {
+      const t = new Date(base); t.setHours(h,30,0,0);
+      const p = sunPos(t, lat, lon);
+      if (p.alt > maxElev) { maxElev = p.alt; maxX = tx(t); }
+    }
+    const cy = ty(maxElev) - 10;
+    const pathD = `M ${sx},210 Q ${maxX},${cy} ${ex},210`;
+    setSvgAttr('arcPath',     { d: pathD });
+    setSvgAttr('arcPathGlow', { d: pathD });
+    setSvgAttr('svgSr',  { x1:sx, x2:sx });
+    setSvgAttr('svgSs',  { x1:ex, x2:ex });
+    setSvgAttr('svgSrTxt', { x: sx+2 }); setSvgText('svgSrTxt', 'SR ' + fmt(sr));
+    setSvgAttr('svgSsTxt', { x: ex-38 }); setSvgText('svgSsTxt', 'SS ' + fmt(ss));
+    if (ghAmE) { const gx = tx(ghAmE); setSvgAttr('svgGhAmE', { x1:gx, x2:gx }); }
+    if (ghPmS) { const gx = tx(ghPmS); setSvgAttr('svgGhPmS', { x1:gx, x2:gx }); }
+    setSvgText('svgMaxTxt', `MAX ${maxElev.toFixed(1)}°`);
+  }
+}
+
+function updateNowMarker(pos, now) {
+  const x = tx(now);
+  const y = pos.alt > 0 ? ty(pos.alt) : 218;
+  ['svgSunA','svgSunB','svgSunC'].forEach(id => setSvgAttr(id, { cx:x, cy:y }));
+  setSvgAttr('svgNowL', { x1:x, x2:x, y1:y, y2:210 });
+  setSvgAttr('svgNowTxt',  { x:x-12, y:y-9 }); setSvgText('svgNowTxt', 'NOW');
+  setSvgAttr('svgNowTime', { x:x-14, y:242 }); setSvgText('svgNowTime', fmt(now));
+  setSvgAttr('svgAzL',   { x1:400, y1:210, x2:x, y2:y });
+  setSvgAttr('svgAzTxt', { x:(400+x)/2-10, y:(210+y)/2 });
+  setSvgText('svgAzTxt', Math.round(pos.az) + '° AZ');
+}
+
+function updateCompass(az) {
+  const approach = (az+180)%360;
+  document.getElementById('cSun').setAttribute('transform', `rotate(${az},60,60)`);
+  document.getElementById('cApproach').setAttribute('transform', `rotate(${approach},60,60)`);
+  setSvgText('cBearingTxt', card(approach) + ' ' + Math.round(approach) + '°');
+}
+
+// ── BRIEF CONTENT — MODE AWARE ────────────────────────────────
+function conditionText(pos, sr, ss, mode, type) {
+  const ph = phase(pos.alt);
+  const elev = pos.alt.toFixed(1);
+  const approach = card((pos.az+180)%360);
+
+  if (mode === 'inspection') {
+    if (pos.alt < 0)   return { tag:'tag-info',     head:'Sun Below Horizon', body:`Sun at ${elev}°. No usable light. Next window: sunrise ${fmt(sr)}.` };
+    if (pos.alt < 6)   return { tag:'tag-optimal',  head:'Golden Hour — Optimal Now', body:`Sun at ${elev}°. Raking light reveals surface defects, corrosion, and panel irregularities. Maximum shadow relief. Approach from ${approach}.` };
+    if (pos.alt < 15)  return { tag:'tag-optimal',  head:'Soft Directional — Good', body:`Sun at ${elev}°. Clean directional light with strong shadow definition. Good for structural inspection. ND8 recommended.` };
+    if (pos.alt < 30)  return { tag:'tag-warning',  head:'Moderate Light — Acceptable', body:`Sun at ${elev}°. Usable but shadows shortening. Surface texture detail reduced. Apply ND16 and CPL to control reflections on metallic assets.` };
+    return                   { tag:'tag-critical', head:'Avoid — Flat Overhead Light', body:`Sun at ${elev}°. Overhead light kills shadow relief. Surface defects and irregularities will be invisible. Specular glare on metal and glass panels. Reschedule to golden hour windows if operationally possible.` };
+  } else {
+    // CINEMATIC
+    if (pos.alt < 0)   return { tag:'tag-info',     head:'Sun Below Horizon', body:`Sun at ${elev}°. Twilight offers dramatic low ambient light for creative framing. Prepare for blue hour at ${fmt(sr)}.` };
+    if (pos.alt < 6)   return { tag:'tag-optimal',  head:'Golden Hour — Cinematic Optimal', body:`Sun at ${elev}°. Warm low-angle light creates depth, dimension, and dramatic shadow play. Backlit silhouettes highly effective from ${approach} approach. Lens flare possible — use creatively or flag.` };
+    if (pos.alt < 15)  return { tag:'tag-optimal',  head:'Soft Light — Cinematic Good', body:`Sun at ${elev}°. Pleasing directional light with natural colour temperature. Good for establishing shots. Shadows still long enough for depth.` };
+    if (pos.alt < 30)  return { tag:'tag-warning',  head:'Moderate — Neutral Light', body:`Sun at ${elev}°. Light is clean but neutral. Better suited to documentary-style footage than dramatic cinematography. Colour grade in post.` };
+    return                   { tag:'tag-critical', head:'Harsh Overhead — Avoid for Drama', body:`Sun at ${elev}°. Flat overhead light with no cinematic quality. Acceptable for reference/documentation only. Wait for the PM golden hour window.` };
+  }
+}
+
+function flightNote(pos, mode) {
+  const approach = card((pos.az+180)%360);
+  const azCard   = card(pos.az);
+  if (pos.alt <= 0) return 'Sun below horizon. Compass will update at sunrise.';
+  if (mode === 'inspection')
+    return `Approach from ${approach}. Keep asset face-on to light. Sun is ${azCard} — position drone on opposite side to maximise surface illumination. Avoid flying directly into sun — flare risk.`;
+  return `For front-lit: approach from ${approach}. For backlit silhouette: approach from ${azCard} — fly toward asset with sun behind drone. Golden hour backlit shots highly effective from this angle.`;
+}
+
+function windowText(startTime, endTime, startAz, lat, lon, mode) {
+  if (!startTime || !endTime) return '—';
+  const azC = card(startAz);
+  const approachC = card((startAz+180)%360);
+  if (mode === 'inspection')
+    return `Raking light from ${azC}. Maximum shadow relief for surface defect detection. Approach from ${approachC} — asset face-on to light source.`;
+  return `Warm ${azC} light. Ideal for dramatic establishing shots and structural silhouettes. Approach from ${approachC} for front-lit. Reverse for backlit effect.`;
+}
+
+// ── MAIN CALCULATE ────────────────────────────────────────────
+function calculate() {
+  const lat = parseFloat(document.getElementById('inputLat').value);
+  const lon = parseFloat(document.getElementById('inputLon').value);
+  const dv  = document.getElementById('inputDate').value;
+  const shootType = document.getElementById('shootType').value;
+
+  if (isNaN(lat)||isNaN(lon)||!dv) {
+    alert('Location and date required.');
+    return;
+  }
+
+  const base = new Date(dv + 'T12:00:00');
+  const now  = new Date();
+  const isToday = dv === now.toISOString().split('T')[0];
+  const ref  = isToday ? now : base;
+
+  // Sun position at reference time
+  const pos = sunPos(ref, lat, lon);
+
+  // Key event times
+  const sr    = findCrossing(lat, lon, base,  0, 'rise', 0, 14);
+  const ss    = findCrossing(lat, lon, base,  0, 'set', 10, 24);
+  const bhAmS = findCrossing(lat, lon, base, -6, 'rise', 0, 12); // blue hour start
+  const bhAmE = sr;  // blue hour ends at sunrise
+  const ghAmS = sr;  // golden hour starts at sunrise
+  const ghAmE = findCrossing(lat, lon, base,  6, 'rise', 0, 14);
+  const ghPmS = findCrossing(lat, lon, base,  6, 'set', 10, 24);
+  const ghPmE = ss;  // golden hour ends at sunset
+
+  // Azimuth at window midpoints
+  const amMid = ghAmS && ghAmE ? new Date((ghAmS.getTime()+ghAmE.getTime())/2) : ghAmS;
+  const pmMid = ghPmS && ghPmE ? new Date((ghPmS.getTime()+ghPmE.getTime())/2) : ghPmE;
+  const amAz  = amMid ? sunPos(amMid, lat, lon).az : 90;
+  const pmAz  = pmMid ? sunPos(pmMid, lat, lon).az : 270;
+
+  const ghAmDur = minDur(ghAmS, ghAmE);
+  const ghPmDur = minDur(ghPmS, ghPmE);
+  const bhDur   = minDur(bhAmS, bhAmE);
+
+  // Find harsh window midday
+  const harshS = findCrossing(lat, lon, base, 30, 'rise',  6, 14);
+  const harshE = findCrossing(lat, lon, base, 30, 'set',  10, 20);
+
+  // Store for re-render on mode change
+  lastCalc = { lat, lon, dv, base, ref, pos, sr, ss, bhAmS, bhAmE, ghAmS, ghAmE, ghPmS, ghPmE, amAz, pmAz, ghAmDur, ghPmDur, bhDur, harshS, harshE, shootType };
+
+  renderBrief(lastCalc);
+}
+
+function renderBrief(c) {
+  const { lat, lon, base, ref, pos, sr, ss, bhAmS, bhAmE, ghAmS, ghAmE, ghPmS, ghPmE, amAz, pmAz, ghAmDur, ghPmDur, bhDur, harshS, harshE, shootType } = c;
+  const mode = currentMode;
+  const ph   = phase(pos.alt);
+  const nd   = ndFilter(pos.alt);
+  const cpl  = cplAdvice(pos.alt, shootType, mode);
+  const approach = (pos.az+180)%360;
+
+  // Location name
+  const locName = document.getElementById('inputName')?.value || `${Math.abs(lat).toFixed(3)}°${lat>=0?'N':'S'}`;
+  document.getElementById('arcName').textContent = locName;
+  document.getElementById('arcCoords').innerHTML = `${Math.abs(lat).toFixed(4)}°${lat>=0?'N':'S'} &nbsp;${Math.abs(lon).toFixed(4)}°${lon>=0?'E':'W'}<br>${base.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`;
+
+  // Metrics
+  document.getElementById('metElev').innerHTML  = `${pos.alt.toFixed(1)}<span class="metric-unit">°</span>`;
+  document.getElementById('metAz').innerHTML    = `${Math.round(pos.az)}<span class="metric-unit">°</span>`;
+  const bestDur = ghAmDur || ghPmDur;
+  document.getElementById('metWindow').textContent = bestDur ? bestDur + ' min' : '—';
+  const phEl = document.getElementById('metPhase');
+  phEl.textContent = ph.name; phEl.style.color = ph.col;
+
+  // Badges
+  document.getElementById('badgeGoldAm').textContent = ghAmS && ghAmE ? fmt(ghAmS)+'–'+fmt(ghAmE) : '—';
+  document.getElementById('badgeGoldPm').textContent = ghPmS && ghPmE ? fmt(ghPmS)+'–'+fmt(ghPmE) : '—';
+  document.getElementById('badgeBlueAm').textContent = bhAmS && bhAmE ? fmt(bhAmS)+'–'+fmt(bhAmE) : '—';
+  document.getElementById('badgeAvoid').textContent  = harshS && harshE ? fmt(harshS)+'–'+fmt(harshE) : 'Low today';
+
+  // Conditions
+  const cond = conditionText(pos, sr, ss, mode, shootType);
+  document.getElementById('condTag').className = 'brief-tag ' + cond.tag;
+  document.getElementById('condHead').textContent = cond.head;
+  document.getElementById('condBody').textContent = cond.body;
+
+  // Flight path
+  updateCompass(pos.az);
+  document.getElementById('fApproach').textContent   = card(approach) + ' · ' + Math.round(approach) + '°';
+  document.getElementById('fSunBearing').textContent  = card(pos.az) + ' · ' + Math.round(pos.az) + '°';
+  document.getElementById('fShadow').textContent      = card(pos.az) + ' · ' + Math.round(pos.az) + '°';
+  document.getElementById('fLitFace').textContent     = litFaceFromAz(pos.az);
+  document.getElementById('fNote').textContent        = flightNote(pos, mode);
+
+  // Filters
+  document.getElementById('fNdName').textContent    = nd.name;
+  document.getElementById('fNdReason').textContent  = nd.reason;
+  document.getElementById('fCplReason').textContent = cpl;
+  document.getElementById('filterPhaseLabel').textContent = ph.name;
+  document.getElementById('filterPhaseVal').textContent   = nd.name + ' · CPL ' + (pos.alt > 10 ? 'recommended' : 'optional');
+
+  // AM window
+  if (ghAmS && ghAmE) {
+    document.getElementById('amHead').textContent  = `Golden Hour — ${fmt(ghAmS)} to ${fmt(ghAmE)}`;
+    document.getElementById('amBody').textContent  = windowText(ghAmS, ghAmE, amAz, lat, lon, mode);
+    document.getElementById('amStart').textContent = fmt(ghAmS);
+    document.getElementById('amEnd').textContent   = fmt(ghAmE);
+    document.getElementById('amDur').textContent   = ghAmDur + ' min';
+    document.getElementById('amBar').style.width   = Math.min(100, ghAmDur*1.8) + '%';
+  } else {
+    document.getElementById('amHead').textContent = 'AM Golden Hour — not available';
+    document.getElementById('amBody').textContent = 'No golden hour window found for this date and location.';
+  }
+
+  // PM window
+  if (ghPmS && ghPmE) {
+    document.getElementById('pmHead').textContent  = `Golden Hour — ${fmt(ghPmS)} to ${fmt(ghPmE)}`;
+    document.getElementById('pmBody').textContent  = windowText(ghPmS, ghPmE, pmAz, lat, lon, mode);
+    document.getElementById('pmStart').textContent = fmt(ghPmS);
+    document.getElementById('pmEnd').textContent   = fmt(ghPmE);
+    document.getElementById('pmDur').textContent   = ghPmDur + ' min';
+    document.getElementById('pmBar').style.width   = Math.min(100, ghPmDur*1.8) + '%';
+  } else {
+    document.getElementById('pmHead').textContent = 'PM Golden Hour — not available';
+    document.getElementById('pmBody').textContent = 'No PM golden hour window found for this date and location.';
+  }
+
+  // Blue hour
+  if (bhAmS && bhAmE) {
+    document.getElementById('bhHead').textContent  = `Blue Hour — ${fmt(bhAmS)} to ${fmt(bhAmE)}`;
+    document.getElementById('bhBody').textContent  = mode === 'inspection'
+      ? `Diffuse pre-dawn ambient light. No hard shadows — suitable for even, non-directional illumination of asset surfaces. Minimal specular glare risk.`
+      : `Deep blue ambient with no harsh shadows. Excellent for moody cinematic establishing shots. No ND required — open aperture. Tripod/hover stabilisation essential.`;
+    document.getElementById('bhStart').textContent = fmt(bhAmS);
+    document.getElementById('bhEnd').textContent   = fmt(bhAmE);
+    document.getElementById('bhDur').textContent   = bhDur + ' min';
+    document.getElementById('bhBar').style.width   = Math.min(100, bhDur*1.5) + '%';
+  } else {
+    document.getElementById('bhHead').textContent = 'Blue Hour — not available';
+  }
+
+  // SVG
+  updateArc(lat, lon, base, sr, ss, ghAmE, ghPmS);
+  updateNowMarker(pos, ref);
+
+  // Now indicator bar
+  const nowPct = (ref.getHours()*60+ref.getMinutes()) / 1440 * 100;
+  document.getElementById('nowInd').style.left = nowPct + '%';
+
+  // Time ruler
+  document.getElementById('rulerNow').textContent = fmt(ref) + ' ▲';
+  document.getElementById('rulerNow').classList.add('now');
+
+  // Footer
+  document.getElementById('footerCalc').textContent = 'Calculated ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('hdrStatus').textContent = 'CALCULATED';
+}
+
+// ── EXPORT BRIEF ──────────────────────────────────────────────
+function exportBrief() {
+  if (!lastCalc) { alert('Calculate first.'); return; }
+  const c = lastCalc;
+  const locName = document.getElementById('inputName')?.value || `${c.lat.toFixed(4)}, ${c.lon.toFixed(4)}`;
+  const mode = currentMode.toUpperCase();
+  const ph = phase(c.pos.alt);
+  const nd = ndFilter(c.pos.alt);
+  const lines = [
+    'AIRSUV SOLAR PLANNER — SHOOT BRIEF',
+    '═'.repeat(40),
+    `Location : ${locName}`,
+    `Date     : ${c.base.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}`,
+    `Coords   : ${c.lat.toFixed(6)}, ${c.lon.toFixed(6)}`,
+    `Mode     : ${mode}`,
+    `Shoot    : ${c.shootType}`,
+    '',
+    'CURRENT CONDITIONS',
+    `─`.repeat(30),
+    `Sun Elevation : ${c.pos.alt.toFixed(1)}°`,
+    `Sun Azimuth   : ${Math.round(c.pos.az)}° (${card(c.pos.az)})`,
+    `Light Phase   : ${ph.name}`,
+    `Approach      : ${card((c.pos.az+180)%360)} · ${Math.round((c.pos.az+180)%360)}°`,
+    '',
+    'LIGHT WINDOWS',
+    `─`.repeat(30),
+    `Sunrise       : ${fmt(c.sr)}`,
+    `Sunset        : ${fmt(c.ss)}`,
+    `Blue Hour AM  : ${fmt(c.bhAmS)} – ${fmt(c.bhAmE)}  (${c.bhDur} min)`,
+    `Golden AM     : ${fmt(c.ghAmS)} – ${fmt(c.ghAmE)}  (${c.ghAmDur} min)`,
+    `Golden PM     : ${fmt(c.ghPmS)} – ${fmt(c.ghPmE)}  (${c.ghPmDur} min)`,
+    '',
+    'FILTER RECOMMENDATION',
+    `─`.repeat(30),
+    `ND Filter     : ${nd.name}  — ${nd.reason}`,
+    `CPL           : ${cplAdvice(c.pos.alt, c.shootType, currentMode)}`,
+    '',
+    `Generated by AIRSUV Solar Planner · ${new Date().toLocaleString('en-GB')}`
+  ];
+  const blob = new Blob([lines.join('\n')], { type:'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `AIRSUV_Brief_${locName.replace(/[^a-z0-9]/gi,'_')}_${c.dv}.txt`;
+  a.click();
+}
+
+// ── ADD TO CALENDAR (ICS) ─────────────────────────────────────
+function addToCalendar() {
+  if (!lastCalc) { alert('Calculate first.'); return; }
+  const c = lastCalc;
+  const locName = document.getElementById('inputName')?.value || `${c.lat.toFixed(4)}, ${c.lon.toFixed(4)}`;
+
+  function icsDate(d) {
+    if (!d) return null;
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+  }
+
+  const events = [];
+  if (c.ghAmS && c.ghAmE) events.push({ summary:`AIRSUV Golden Hour AM — ${locName}`, start:icsDate(c.ghAmS), end:icsDate(c.ghAmE), desc:`Sun from ${card(c.amAz)} · ND4 filter · Approach from ${card((c.amAz+180)%360)}` });
+  if (c.ghPmS && c.ghPmE) events.push({ summary:`AIRSUV Golden Hour PM — ${locName}`, start:icsDate(c.ghPmS), end:icsDate(c.ghPmE), desc:`Sun from ${card(c.pmAz)} · ND4 filter · Approach from ${card((c.pmAz+180)%360)}` });
+  if (c.bhAmS && c.bhAmE) events.push({ summary:`AIRSUV Blue Hour AM — ${locName}`,   start:icsDate(c.bhAmS), end:icsDate(c.bhAmE), desc:'No ND · Open aperture · Diffuse ambient light' });
+
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//AIRSUV//Solar Planner//EN',
+    ...events.flatMap(ev => [
+      'BEGIN:VEVENT',
+      `SUMMARY:${ev.summary}`,
+      `DTSTART:${ev.start}`,
+      `DTEND:${ev.end}`,
+      `DESCRIPTION:${ev.desc}`,
+      `LOCATION:${locName}`,
+      'END:VEVENT'
+    ]),
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type:'text/calendar' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `AIRSUV_${locName.replace(/[^a-z0-9]/gi,'_')}_${c.dv}.ics`;
+  a.click();
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', function() {
+  setTimeout(requestGPS, 600);
+
+  document.getElementById('calcBtn').addEventListener('click', calculate);
+
+  document.getElementById('inputDate').addEventListener('change', function() {
+    if (document.getElementById('inputLat').value) calculate();
+  });
+});
+</script>
+</body>
+</html>
